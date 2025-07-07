@@ -14,7 +14,6 @@ class ImageGenerationInput(BaseModel):
     size: str = Field(..., description="The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: 'auto')")
     quality: str = Field(..., description="The quality of the image ('low', 'medium', 'high', 'auto') (default: 'auto')")
     background: str = Field(..., description="Background type ('transparent', 'opaque', 'auto') (default: 'auto')")
-    format: str = Field(..., description="Output format ('png', 'jpeg', 'webp') (default: 'png')")
     output_compression: int | None = Field(..., description="Compression level (0-100%) for JPEG and WebP formats (suggested: 80 for JPEG/WebP, null for PNG)")
 
 @mcp.tool()
@@ -39,7 +38,6 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             size=input.size,
             quality=input.quality,
             background=input.background,
-            format=input.format,
             output_compression=input.output_compression
         )
         
@@ -55,7 +53,6 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "size": input.size,
             "quality": input.quality,
             "background": input.background,
-            "format": input.format,
             "output_compression": input.output_compression,
             "image_base64": image_base64,
             "image_size_bytes": len(image_bytes),
@@ -72,7 +69,6 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "size": input.size,
             "quality": input.quality,
             "background": input.background,
-            "format": input.format,
             "output_compression": input.output_compression,
             "message": "Failed to generate image"
         } 

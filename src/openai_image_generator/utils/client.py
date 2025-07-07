@@ -270,7 +270,7 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", format: str = "png", output_compression: int | None = None) -> bytes:
+def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
@@ -279,8 +279,7 @@ def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", 
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
-        format: Output format ('png', 'jpeg', 'webp') (default: "png")
-        output_compression: Compression level (0-100%) for JPEG and WebP formats (default: None)
+        output_compression: Compression level (0-100%) for supported formats (default: None)
         
     Returns:
         The generated image as bytes
@@ -304,12 +303,11 @@ def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", 
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "background": background,
-            "format": format
+            "background": background
         }
         
-        # Add output_compression only if specified and format supports it
-        if output_compression is not None and format in ["jpeg", "webp"]:
+        # Add output_compression only if specified
+        if output_compression is not None:
             params["output_compression"] = output_compression
         
         # Generate the image
@@ -326,7 +324,7 @@ def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", 
         raise
 
 
-async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", format: str = "png", output_compression: int | None = None) -> bytes:
+async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
     """Async version of generate_image for use in async contexts.
     
     Args:
@@ -335,8 +333,7 @@ async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: st
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
-        format: Output format ('png', 'jpeg', 'webp') (default: "png")
-        output_compression: Compression level (0-100%) for JPEG and WebP formats (default: None)
+        output_compression: Compression level (0-100%) for supported formats (default: None)
         
     Returns:
         The generated image as bytes
@@ -361,12 +358,11 @@ async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: st
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "background": background,
-            "format": format
+            "background": background
         }
         
-        # Add output_compression only if specified and format supports it
-        if output_compression is not None and format in ["jpeg", "webp"]:
+        # Add output_compression only if specified
+        if output_compression is not None:
             params["output_compression"] = output_compression
         
         # Generate the image
