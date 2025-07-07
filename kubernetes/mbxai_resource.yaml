@@ -1,0 +1,19 @@
+apiVersion: mbxai.cloud/v1
+kind: MbxAiResource
+metadata:
+  name: "openai_image_generator"
+  namespace: mbxai-sandbox
+spec:
+  name: "OpenAI Image generator"
+  repoUrl: "https://github.com/mibexx/openai_image_generator"
+  key: "openai_image_generator-key"
+  baseImage: "mibexx/mbxai-service:latest"
+  port: 5000
+  expose: false
+  runCommand: ["service"]
+  customEnvVars:
+    - "OPENAI_IMAGE_GENERATOR_NAME": "OpenAI Image generator"
+    - "OPENAI_IMAGE_GENERATOR_LOG_LEVEL": "INFO"
+  customSecrets:
+    - "OPENAI_IMAGE_GENERATOR_OPENROUTER_API_KEY": "your-openrouter-api-key"
+    - "OPENAI_IMAGE_GENERATOR_OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1"
