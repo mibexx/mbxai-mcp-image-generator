@@ -329,7 +329,7 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         prompt: The text description of the image to generate
         model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
-        quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
+        quality: The quality of the image ('standard', 'hd') (default: "standard")
         
     Returns:
         The generated image as bytes
