@@ -11,12 +11,11 @@ mcp = FastMCP("image_generator")
 
 class ImageGenerationInput(BaseModel):
     prompt: str = Field(..., description="The text description of the image to generate")
-    model: str = Field(default="gpt-image-1", description="The model to use for generation")
-    size: str = Field(default="auto", description="The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto')")
-    quality: str = Field(default="auto", description="The quality of the image ('low', 'medium', 'high', 'auto')")
-    background: str = Field(default="auto", description="Background type ('transparent', 'opaque', 'auto')")
-    format: str = Field(default="png", description="Output format ('png', 'jpeg', 'webp')")
-    output_compression: int | None = Field(default=None, description="Compression level (0-100%) for JPEG and WebP formats")
+    size: str = Field(..., description="The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: 'auto')")
+    quality: str = Field(..., description="The quality of the image ('low', 'medium', 'high', 'auto') (default: 'auto')")
+    background: str = Field(..., description="Background type ('transparent', 'opaque', 'auto') (default: 'auto')")
+    format: str = Field(..., description="Output format ('png', 'jpeg', 'webp') (default: 'png')")
+    output_compression: int | None = Field(..., description="Compression level (0-100%) for JPEG and WebP formats (suggested: 80 for JPEG/WebP, null for PNG)")
 
 @mcp.tool()
 async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
@@ -33,10 +32,10 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
     try:
         logger.info(f"Generating image with prompt: {input.prompt[:100]}...")
         
-        # Generate the image using the async client function
+        # Generate the image using the async client function (always use gpt-image-1 model)
         image_bytes = await generate_image_async(
             prompt=input.prompt,
-            model=input.model,
+            model="gpt-image-1",
             size=input.size,
             quality=input.quality,
             background=input.background,
@@ -52,7 +51,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         return {
             "success": True,
             "prompt": input.prompt,
-            "model": input.model,
+            "model": "gpt-image-1",
             "size": input.size,
             "quality": input.quality,
             "background": input.background,
@@ -69,7 +68,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "success": False,
             "error": str(e),
             "prompt": input.prompt,
-            "model": input.model,
+            "model": "gpt-image-1",
             "size": input.size,
             "quality": input.quality,
             "background": input.background,
