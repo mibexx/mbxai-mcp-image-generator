@@ -270,7 +270,7 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
+def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", output_compression: int | None = None) -> bytes:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
@@ -278,7 +278,6 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
         model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
-        background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
         output_compression: Compression level (0-100%) for supported formats (default: None)
         
     Returns:
@@ -307,7 +306,7 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "background": background
+            "response_format": "b64_json"
         }
         
         # Add output_compression only if specified
@@ -328,7 +327,7 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
         raise
 
 
-async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
+async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", output_compression: int | None = None) -> bytes:
     """Async version of generate_image for use in async contexts.
     
     Args:
@@ -336,7 +335,6 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
-        background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
         output_compression: Compression level (0-100%) for supported formats (default: None)
         
     Returns:
@@ -366,7 +364,7 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "background": background
+            "response_format": "b64_json"
         }
         
         # Add output_compression only if specified
