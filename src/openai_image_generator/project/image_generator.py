@@ -31,10 +31,13 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
     try:
         logger.info(f"Generating image with prompt: {input.prompt[:100]}...")
         
-        # Generate the image using the async client function (always use gpt-image-1 model)
+        # Generate the image using the async client function with configured model
+        from ..config import get_openai_config
+        openai_config = get_openai_config()
+        
         image_bytes = await generate_image_async(
             prompt=input.prompt,
-            model="gpt-image-1",
+            model=openai_config.image_model,
             size=input.size,
             quality=input.quality,
             background=input.background,
@@ -49,7 +52,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         return {
             "success": True,
             "prompt": input.prompt,
-            "model": "gpt-image-1",
+            "model": openai_config.image_model,
             "size": input.size,
             "quality": input.quality,
             "background": input.background,
@@ -65,7 +68,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "success": False,
             "error": str(e),
             "prompt": input.prompt,
-            "model": "gpt-image-1",
+            "model": openai_config.image_model,
             "size": input.size,
             "quality": input.quality,
             "background": input.background,

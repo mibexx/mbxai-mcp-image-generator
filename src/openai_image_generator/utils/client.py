@@ -270,12 +270,12 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
+def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
         prompt: The text description of the image to generate
-        model: The model to use for generation (default: "gpt-image-1")
+        model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
@@ -290,6 +290,10 @@ def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", 
     try:
         # Get OpenAI configuration
         openai_config = get_openai_config()
+        
+        # Use configured model if none provided
+        if model is None:
+            model = openai_config.image_model
         
         # Initialize OpenAI client
         client = OpenAI(
@@ -324,12 +328,12 @@ def generate_image(prompt: str, model: str = "gpt-image-1", size: str = "auto", 
         raise
 
 
-async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
+async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto", background: str = "auto", output_compression: int | None = None) -> bytes:
     """Async version of generate_image for use in async contexts.
     
     Args:
         prompt: The text description of the image to generate
-        model: The model to use for generation (default: "gpt-image-1")
+        model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         background: Background type ('transparent', 'opaque', 'auto') (default: "auto")
@@ -344,6 +348,10 @@ async def generate_image_async(prompt: str, model: str = "gpt-image-1", size: st
     try:
         # Get OpenAI configuration
         openai_config = get_openai_config()
+        
+        # Use configured model if none provided
+        if model is None:
+            model = openai_config.image_model
         
         # Initialize async OpenAI client
         from openai import AsyncOpenAI

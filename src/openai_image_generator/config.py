@@ -53,6 +53,7 @@ class OpenAIConfig(BaseSettings):
 
     api_key: str = Field(alias="OPENAI_API_KEY")
     base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+    image_model: str = Field(default="dall-e-3", alias="OPENAI_IMAGE_MODEL")
 
     model_config = SettingsConfigDict(
         env_prefix="",
