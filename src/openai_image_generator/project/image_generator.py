@@ -39,9 +39,9 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             quality=input.quality
         )
         
-        logger.info(f"Successfully received image URL: {image_url}")
+        logger.info(f"Successfully received proxy image URL: {image_url}")
         
-        logger.info(f"Successfully generated image for prompt: {input.prompt[:50]}...")
+        logger.info(f"Successfully generated and stored image for prompt: {input.prompt[:50]}...")
         
         return {
             "success": True,

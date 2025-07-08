@@ -1,8 +1,11 @@
-from ..config import get_openrouter_api_config, get_service_api_config, get_openai_config
+from ..config import get_openrouter_api_config, get_service_api_config, get_openai_config, get_image_storage_config
 from typing import Any
 import httpx
 import asyncio
 import logging
+import os
+import uuid
+from pathlib import Path
 from pydantic import BaseModel
 
 from openai import OpenAI
@@ -260,6 +263,70 @@ class ServiceApiClient:
         """Close the HTTP client."""
         await self.client.aclose()
 
+
+def _ensure_upload_directory() -> Path:
+    """Ensure the upload directory exists and return its path.
+    
+    Returns:
+        Path object for the upload directory
+    """
+    config = get_image_storage_config()
+    upload_path = Path(config.storage_path)
+    upload_path.mkdir(parents=True, exist_ok=True)
+    return upload_path
+
+
+async def _download_and_save_image(image_url: str) -> str:
+    """Download an image from a URL and save it locally.
+    
+    Args:
+        image_url: The URL of the image to download
+        
+    Returns:
+        The filename of the saved image
+        
+    Raises:
+        Exception: If image download or save fails
+    """
+    try:
+        # Ensure upload directory exists
+        upload_path = _ensure_upload_directory()
+        
+        # Generate unique filename
+        image_id = str(uuid.uuid4())
+        filename = f"{image_id}.png"
+        file_path = upload_path / filename
+        
+        # Download the image
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(image_url)
+            response.raise_for_status()
+            
+            # Save the image
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            
+        logging.info(f"Successfully downloaded and saved image: {filename}")
+        return filename
+        
+    except Exception as e:
+        logging.error(f"Error downloading image from {image_url}: {str(e)}")
+        raise
+
+
+def _generate_proxy_url(filename: str) -> str:
+    """Generate a proxy URL for accessing a stored image.
+    
+    Args:
+        filename: The filename of the stored image
+        
+    Returns:
+        The proxy URL for accessing the image
+    """
+    config = get_image_storage_config()
+    return f"{config.proxy_domain}{config.proxy_endpoint}/{filename}"
+
+
 def get_openrouter_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> OpenRouterClient:
     """Get the OpenRouter client."""
     return OpenRouterClient(api_key=get_openrouter_api_config().api_key, base_url=get_openrouter_api_config().base_url, model=model)
@@ -279,46 +346,13 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
     Returns:
-        The URL of the generated image
+        The proxy URL of the downloaded and stored image
         
     Raises:
-        Exception: If image generation fails
+        Exception: If image generation, download, or storage fails
     """
-    try:
-        # Get OpenAI configuration
-        openai_config = get_openai_config()
-        
-        # Use configured model if none provided
-        if model is None:
-            model = openai_config.image_model
-        
-        # Initialize OpenAI client
-        client = OpenAI(
-            api_key=openai_config.api_key,
-            base_url=openai_config.base_url
-        )
-        
-        # Prepare parameters for API call
-        params = {
-            "model": model,
-            "prompt": prompt,
-            "size": size,
-            "quality": quality,
-            "response_format": "url"
-        }
-        
-        # Generate the image
-        result = client.images.generate(**params)
-        
-        # Return the image URL
-        image_url = result.data[0].url
-        logging.info(f"Successfully generated image URL: {image_url}")
-        
-        return image_url
-        
-    except Exception as e:
-        logging.error(f"Error generating image: {str(e)}")
-        raise
+    # Use the async version with asyncio.run for synchronous interface
+    return asyncio.run(generate_image_async(prompt, model, size, quality))
 
 
 async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
@@ -330,11 +364,11 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
-            Returns:
-        The URL of the generated image
+    Returns:
+        The proxy URL of the downloaded and stored image
         
     Raises:
-        Exception: If image generation fails
+        Exception: If image generation, download, or storage fails
     """
     try:
         # Get OpenAI configuration
@@ -363,12 +397,19 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         # Generate the image
         result = await client.images.generate(**params)
         
-        # Return the image URL
-        image_url = result.data[0].url
-        logging.info(f"Successfully generated image URL: {image_url}")
+        # Get the original image URL
+        original_image_url = result.data[0].url
+        logging.info(f"Successfully generated image URL: {original_image_url}")
         
-        return image_url
+        # Download and save the image
+        filename = await _download_and_save_image(original_image_url)
+        
+        # Generate and return proxy URL
+        proxy_url = _generate_proxy_url(filename)
+        logging.info(f"Image stored locally and accessible via: {proxy_url}")
+        
+        return proxy_url
         
     except Exception as e:
-        logging.error(f"Error generating image: {str(e)}")
+        logging.error(f"Error generating or storing image: {str(e)}")
         raise

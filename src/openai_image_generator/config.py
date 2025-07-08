@@ -89,6 +89,22 @@ class ServiceAPIConfig(BaseSettings):
         extra="ignore",
     )
 
+
+class ImageStorageConfig(BaseSettings):
+    """Image storage and proxy configuration."""
+
+    storage_path: str = Field(default="/app/uploads", alias="IMAGE_STORAGE_PATH")
+    proxy_domain: str = Field(default="http://image-generator.mbxai-mvc.svc.cluster.local:5000", alias="IMAGE_PROXY_DOMAIN")
+    proxy_endpoint: str = Field(default="/images", alias="IMAGE_PROXY_ENDPOINT")
+
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        env_file=ROOT_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
 @lru_cache
 def get_config() -> ApplicationConfig:
     """Get the application configuration singleton."""
@@ -111,3 +127,9 @@ def get_openai_config() -> OpenAIConfig:
 def get_service_api_config() -> ServiceAPIConfig:
     """Get the service api configuration singleton."""
     return ServiceAPIConfig()
+
+
+@lru_cache
+def get_image_storage_config() -> ImageStorageConfig:
+    """Get the image storage configuration singleton."""
+    return ImageStorageConfig()
