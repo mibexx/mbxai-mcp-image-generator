@@ -1,5 +1,4 @@
 from typing import Any
-import base64
 import logging
 from pydantic import BaseModel, Field
 from mcp.server.fastmcp import FastMCP
@@ -33,15 +32,14 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         from ..config import get_openai_config
         openai_config = get_openai_config()
         
-        image_bytes = await generate_image_async(
+        image_url = await generate_image_async(
             prompt=input.prompt,
             model=openai_config.image_model,
             size=input.size,
             quality=input.quality
         )
         
-        # Convert bytes back to base64 for JSON response
-        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        logger.info(f"Successfully received image URL: {image_url}")
         
         logger.info(f"Successfully generated image for prompt: {input.prompt[:50]}...")
         
@@ -51,13 +49,20 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "model": openai_config.image_model,
             "size": input.size,
             "quality": input.quality,
-            "image_base64": image_base64,
-            "image_size_bytes": len(image_bytes),
+            "image_url": image_url,
             "message": "Image generated successfully"
         }
         
     except Exception as e:
         logger.error(f"Error generating image: {str(e)}")
+        
+        # Determine error type for better user feedback
+        error_message = "Failed to generate image"
+        if "timeout" in str(e).lower():
+            error_message = "Timeout while generating image"
+        elif "http" in str(e).lower():
+            error_message = "Network error during image generation"
+        
         return {
             "success": False,
             "error": str(e),
@@ -65,5 +70,5 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "model": openai_config.image_model,
             "size": input.size,
             "quality": input.quality,
-            "message": "Failed to generate image"
+            "message": error_message
         } 

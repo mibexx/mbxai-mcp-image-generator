@@ -3,7 +3,6 @@ from typing import Any
 import httpx
 import asyncio
 import logging
-import base64
 from pydantic import BaseModel
 
 from openai import OpenAI
@@ -270,7 +269,7 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> bytes:
+def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
@@ -280,7 +279,7 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
     Returns:
-        The generated image as bytes
+        The URL of the generated image
         
     Raises:
         Exception: If image generation fails
@@ -305,24 +304,24 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "response_format": "b64_json"
+            "response_format": "url"
         }
         
         # Generate the image
         result = client.images.generate(**params)
         
-        # Extract and decode the base64 image data
-        image_base64 = result.data[0].b64_json
-        image_bytes = base64.b64decode(image_base64)
+        # Return the image URL
+        image_url = result.data[0].url
+        logging.info(f"Successfully generated image URL: {image_url}")
         
-        return image_bytes
+        return image_url
         
     except Exception as e:
         logging.error(f"Error generating image: {str(e)}")
         raise
 
 
-async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> bytes:
+async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
     """Async version of generate_image for use in async contexts.
     
     Args:
@@ -331,8 +330,8 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
-    Returns:
-        The generated image as bytes
+            Returns:
+        The URL of the generated image
         
     Raises:
         Exception: If image generation fails
@@ -358,17 +357,17 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             "prompt": prompt,
             "size": size,
             "quality": quality,
-            "response_format": "b64_json"
+            "response_format": "url"
         }
         
         # Generate the image
         result = await client.images.generate(**params)
         
-        # Extract and decode the base64 image data
-        image_base64 = result.data[0].b64_json
-        image_bytes = base64.b64decode(image_base64)
+        # Return the image URL
+        image_url = result.data[0].url
+        logging.info(f"Successfully generated image URL: {image_url}")
         
-        return image_bytes
+        return image_url
         
     except Exception as e:
         logging.error(f"Error generating image: {str(e)}")
