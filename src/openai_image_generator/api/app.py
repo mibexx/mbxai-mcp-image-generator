@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from pathlib import Path
 import os
+import mimetypes
 
 config = get_config()
 
@@ -48,11 +49,15 @@ async def serve_image(filename: str):
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="Image not found")
     
+    # Determine the correct media type based on file extension
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    if not media_type or not media_type.startswith('image/'):
+        media_type = "image/png"  # fallback
+    
     # Return the file
     return FileResponse(
         path=str(file_path),
-        media_type="image/png",
-        filename=filename
+        media_type=media_type
     )
 
 # Function to register tools
