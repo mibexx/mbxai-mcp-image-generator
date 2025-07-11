@@ -324,7 +324,7 @@ def _generate_proxy_url(filename: str) -> str:
         The proxy URL for accessing the image
     """
     config = get_image_storage_config()
-    return f"{config.proxy_domain}/{filename}"
+    return f"{config.proxy_domain}{config.proxy_endpoint}/{filename}"
 
 
 def get_openrouter_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> OpenRouterClient:
