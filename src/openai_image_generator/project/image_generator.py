@@ -50,18 +50,56 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         }
         
     except Exception as e:
-        logger.error(f"Error generating image: {str(e)}")
+        logger.error("=== Image Generation Tool Error ===")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Input parameters:")
+        logger.error(f"  - Prompt: {input.prompt}")
+        logger.error(f"  - Size: {input.size}")
+        logger.error(f"  - Quality: {input.quality}")
         
         # Determine error type for better user feedback
         error_message = "Failed to generate image"
-        if "timeout" in str(e).lower():
+        error_details = str(e)
+        
+        if "400" in str(e) or "bad request" in str(e).lower():
+            error_message = "Invalid request parameters"
+            logger.error("This appears to be a 400 Bad Request error. Common causes:")
+            logger.error("  - Invalid prompt content (violates content policy)")
+            logger.error("  - Invalid size or quality parameters")
+            logger.error("  - Prompt too long or too short")
+            logger.error("  - Unsupported characters in prompt")
+            
+        elif "timeout" in str(e).lower():
             error_message = "Timeout while generating image"
+            logger.error("Request timed out - this may indicate network issues or API overload")
+            
+        elif "http" in str(e).lower() and "401" in str(e):
+            error_message = "Authentication failed"
+            logger.error("401 Unauthorized - check API key configuration")
+            
+        elif "http" in str(e).lower() and "403" in str(e):
+            error_message = "Access forbidden"
+            logger.error("403 Forbidden - check API permissions and quota")
+            
+        elif "http" in str(e).lower() and "429" in str(e):
+            error_message = "Rate limit exceeded"
+            logger.error("429 Too Many Requests - API rate limit exceeded")
+            
+        elif "http" in str(e).lower() and "500" in str(e):
+            error_message = "Server error during image generation"
+            logger.error("500 Internal Server Error - OpenAI API server issue")
+            
         elif "http" in str(e).lower():
             error_message = "Network error during image generation"
+            logger.error("HTTP error occurred during API request")
+            
+        # Log the full error context for debugging
+        logger.error(f"Full error context: {error_details}")
         
         return {
             "success": False,
-            "error": str(e),
+            "error": error_details,
             "prompt": input.prompt,
             "model": openai_config.image_model,
             "size": input.size,

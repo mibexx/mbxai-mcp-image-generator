@@ -61,6 +61,36 @@ class OpenAIConfig(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._validate_config()
+    
+    def _validate_config(self):
+        """Validate the OpenAI configuration."""
+        logger = logging.getLogger(__name__)
+        
+        logger.info("=== OpenAI Configuration Validation ===")
+        logger.info(f"Base URL: {self.base_url}")
+        logger.info(f"Image Model: {self.image_model}")
+        logger.info(f"API Key present: {'Yes' if self.api_key else 'No'}")
+        
+        # Validate API key format (basic check)
+        if not self.api_key:
+            logger.error("OpenAI API key is missing!")
+        elif not self.api_key.startswith('sk-'):
+            logger.warning("OpenAI API key doesn't start with 'sk-' - this might be invalid")
+        
+        # Validate base URL
+        if not self.base_url.startswith(('http://', 'https://')):
+            logger.error(f"Invalid base URL format: {self.base_url}")
+        
+        # Validate image model
+        valid_models = ['dall-e-2', 'dall-e-3']
+        if self.image_model not in valid_models:
+            logger.warning(f"Image model '{self.image_model}' is not in the standard list: {valid_models}")
+        
+        logger.info("Configuration validation completed")
 
 
 class MCPConfig(BaseSettings):

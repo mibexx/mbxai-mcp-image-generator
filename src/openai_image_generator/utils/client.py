@@ -355,6 +355,60 @@ def generate_image(prompt: str, model: str | None = None, size: str = "auto", qu
     return asyncio.run(generate_image_async(prompt, model, size, quality))
 
 
+def _validate_prompt(prompt: str) -> tuple[bool, str]:
+    """Validate a prompt for image generation.
+    
+    Args:
+        prompt: The prompt to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Check for empty or whitespace-only prompts
+    if not prompt or not prompt.strip():
+        return False, "Prompt cannot be empty"
+    
+    # Check prompt length
+    if len(prompt) < 3:
+        return False, "Prompt is too short (minimum 3 characters)"
+    
+    if len(prompt) > 4000:
+        return False, "Prompt is too long (maximum 4000 characters)"
+    
+    # Check for potentially problematic content
+    problematic_terms = [
+        'nude', 'naked', 'explicit', 'sexual', 'violence', 'blood', 'gore',
+        'weapon', 'gun', 'knife', 'bomb', 'terrorist', 'hate', 'discrimination'
+    ]
+    
+    prompt_lower = prompt.lower()
+    for term in problematic_terms:
+        if term in prompt_lower:
+            logger.warning(f"Prompt contains potentially problematic term: {term}")
+            # Don't reject, just warn - let OpenAI's content filter handle it
+    
+    # Check for unsupported characters or encoding issues
+    try:
+        prompt.encode('utf-8')
+    except UnicodeEncodeError:
+        return False, "Prompt contains unsupported characters"
+    
+    # Check for excessive repetition
+    words = prompt.split()
+    if len(words) > 2:
+        word_counts = {}
+        for word in words:
+            word_counts[word.lower()] = word_counts.get(word.lower(), 0) + 1
+        
+        for word, count in word_counts.items():
+            if count > 5:  # More than 5 repetitions of the same word
+                logger.warning(f"Prompt contains excessive repetition of word: {word}")
+    
+    return True, ""
+
+
 async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
     """Async version of generate_image for use in async contexts.
     
@@ -370,15 +424,53 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
     Raises:
         Exception: If image generation, download, or storage fails
     """
+    logger = logging.getLogger(__name__)
+    
     try:
+        # Log input parameters for debugging
+        logger.info("=== Image Generation Request ===")
+        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Model: {model}")
+        logger.info(f"Size: {size}")
+        logger.info(f"Quality: {quality}")
+        
+        # Validate input parameters
+        logger.info("Validating input parameters...")
+        
+        # Validate prompt using comprehensive validation
+        is_valid, error_msg = _validate_prompt(prompt)
+        if not is_valid:
+            raise ValueError(f"Prompt validation failed: {error_msg}")
+        
+        # Validate size parameter
+        valid_sizes = ['1024x1024', '1024x1792', '1792x1024', 'auto']
+        if size not in valid_sizes:
+            logger.warning(f"Invalid size '{size}', using 'auto'. Valid sizes: {valid_sizes}")
+            size = 'auto'
+        
+        # Validate quality parameter
+        valid_qualities = ['standard', 'hd']
+        if quality not in valid_qualities:
+            logger.warning(f"Invalid quality '{quality}', using 'standard'. Valid qualities: {valid_qualities}")
+            quality = 'standard'
+        
+        logger.info("Input validation completed successfully")
+        
         # Get OpenAI configuration
+        logger.info("Retrieving OpenAI configuration...")
         openai_config = get_openai_config()
+        logger.info(f"OpenAI base URL: {openai_config.base_url}")
+        logger.info(f"API key present: {'Yes' if openai_config.api_key else 'No'}")
         
         # Use configured model if none provided
         if model is None:
             model = openai_config.image_model
+            logger.info(f"Using configured model: {model}")
+        else:
+            logger.info(f"Using provided model: {model}")
         
         # Initialize async OpenAI client
+        logger.info("Initializing OpenAI client...")
         from openai import AsyncOpenAI
         client = AsyncOpenAI(
             api_key=openai_config.api_key,
@@ -394,22 +486,80 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             "response_format": "url"
         }
         
+        logger.info("=== API Request Parameters ===")
+        logger.info(f"Model: {params['model']}")
+        logger.info(f"Size: {params['size']}")
+        logger.info(f"Quality: {params['quality']}")
+        logger.info(f"Response Format: {params['response_format']}")
+        logger.info(f"Prompt length: {len(prompt)} characters")
+        
+        # Log prompt content (truncated for privacy)
+        if len(prompt) > 200:
+            logger.info(f"Prompt preview: {prompt[:200]}...")
+        else:
+            logger.info(f"Full prompt: {prompt}")
+        
         # Generate the image
-        result = await client.images.generate(**params)
+        logger.info("Making API request to OpenAI...")
+        try:
+            result = await client.images.generate(**params)
+            logger.info("API request completed successfully")
+            
+        except Exception as api_error:
+            logger.error("=== API Request Failed ===")
+            logger.error(f"Error type: {type(api_error).__name__}")
+            logger.error(f"Error message: {str(api_error)}")
+            
+            # Log additional error details if available
+            if hasattr(api_error, 'response'):
+                logger.error(f"Response status: {api_error.response.status_code}")
+                logger.error(f"Response headers: {dict(api_error.response.headers)}")
+                
+                try:
+                    error_data = api_error.response.json()
+                    logger.error(f"Error response body: {error_data}")
+                    
+                    # Log specific error details
+                    if 'error' in error_data:
+                        error_info = error_data['error']
+                        logger.error(f"OpenAI error type: {error_info.get('type', 'unknown')}")
+                        logger.error(f"OpenAI error code: {error_info.get('code', 'unknown')}")
+                        logger.error(f"OpenAI error message: {error_info.get('message', 'unknown')}")
+                        
+                        # Log parameter validation errors
+                        if 'param' in error_info:
+                            logger.error(f"Parameter error: {error_info['param']}")
+                        
+                except Exception as json_error:
+                    logger.error(f"Could not parse error response as JSON: {str(json_error)}")
+                    logger.error(f"Raw error response: {api_error.response.text[:1000]}")
+            
+            raise
         
         # Get the original image URL
+        if not result.data or len(result.data) == 0:
+            raise ValueError("No image data returned from API")
+        
         original_image_url = result.data[0].url
-        logging.info(f"Successfully generated image URL: {original_image_url}")
+        logger.info(f"Successfully generated image URL: {original_image_url}")
         
         # Download and save the image
+        logger.info("Downloading and saving image...")
         filename = await _download_and_save_image(original_image_url)
+        logger.info(f"Image saved as: {filename}")
         
         # Generate and return proxy URL
         proxy_url = _generate_proxy_url(filename)
-        logging.info(f"Image stored locally and accessible via: {proxy_url}")
+        logger.info(f"Image stored locally and accessible via: {proxy_url}")
+        logger.info("=== Image Generation Completed Successfully ===")
         
         return proxy_url
         
     except Exception as e:
-        logging.error(f"Error generating or storing image: {str(e)}")
+        logger.error("=== Image Generation Failed ===")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Input parameters - Prompt: {prompt[:100]}..., Model: {model}, Size: {size}, Quality: {quality}")
+        
+        # Re-raise the exception for the caller to handle
         raise
