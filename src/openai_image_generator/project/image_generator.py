@@ -10,12 +10,14 @@ mcp = FastMCP("image_generator")
 
 class ImageGenerationInput(BaseModel):
     prompt: str = Field(..., description="The text description of the image to generate")
-    size: str = Field(..., description="The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: 'auto')")
+    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1792', and '1792x1024')")
     quality: str = Field(..., description="The quality of the image ('standard', 'hd') (default: 'standard')")
 
 @mcp.tool()
 async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
     """Generate an image based on a text prompt using OpenAI's image generation API.
+    
+    Allowed sizes: 1024x1024, 1024x1792, and 1792x1024
     
     Args:
         input: ImageGenerationInput model containing prompt and generation parameters
