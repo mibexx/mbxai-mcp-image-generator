@@ -25,8 +25,11 @@ async def _process_image_input(image_input: str, name: str) -> io.BytesIO:
     Raises:
         ValueError: If the input is invalid or download fails
     """
+    logger = logging.getLogger(__name__)
+    
     # Check if it's a URL (starts with http:// or https://)
     if image_input.startswith(('http://', 'https://')):
+        logger.info(f"Processing image URL: {image_input}")
         try:
             # Download the image from URL
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -35,20 +38,28 @@ async def _process_image_input(image_input: str, name: str) -> io.BytesIO:
                 
                 img_file = io.BytesIO(response.content)
                 img_file.name = name
+                logger.info(f"Successfully downloaded image from URL: {len(response.content)} bytes")
                 return img_file
                 
         except Exception as e:
             raise ValueError(f"Failed to download image from URL {image_input}: {str(e)}")
     else:
+        # Log first characters of base64 for debugging
+        preview = image_input[:50] + "..." if len(image_input) > 50 else image_input
+        logger.info(f"Processing base64 image: {preview}")
+        
         try:
             # Assume it's base64 encoded
             # Remove data URL prefix if present (e.g., "data:image/png;base64,")
+            original_input = image_input
             if image_input.startswith('data:'):
                 image_input = image_input.split(',', 1)[1]
+                logger.info(f"Removed data URL prefix, base64 length: {len(image_input)}")
             
             img_data = base64.b64decode(image_input)
             img_file = io.BytesIO(img_data)
             img_file.name = name
+            logger.info(f"Successfully decoded base64 image: {len(img_data)} bytes")
             return img_file
             
         except Exception as e:
@@ -109,6 +120,13 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             for i, img_input in enumerate(input.images):
                 if img_input and img_input.strip():  # Skip empty strings
                     try:
+                        # Log what type of input we're processing
+                        if img_input.startswith(('http://', 'https://')):
+                            logger.info(f"Reference image {i}: URL - {img_input}")
+                        else:
+                            preview = img_input[:50] + "..." if len(img_input) > 50 else img_input
+                            logger.info(f"Reference image {i}: Base64 - {preview}")
+                        
                         img_file = await _process_image_input(img_input, f"reference_{i}.png")
                         image_files.append(img_file)
                         logger.info(f"Processed reference image {i}: {len(img_file.getvalue())} bytes")
@@ -232,6 +250,13 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
         image_files = []
         for i, img_input in enumerate(input.images):
             try:
+                # Log what type of input we're processing
+                if img_input.startswith(('http://', 'https://')):
+                    logger.info(f"Input image {i}: URL - {img_input}")
+                else:
+                    preview = img_input[:50] + "..." if len(img_input) > 50 else img_input
+                    logger.info(f"Input image {i}: Base64 - {preview}")
+                
                 img_file = await _process_image_input(img_input, f"image_{i}.png")
                 image_files.append(img_file)
                 logger.info(f"Processed image {i}: {len(img_file.getvalue())} bytes")
@@ -242,6 +267,13 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
         mask_file = None
         if input.mask and input.mask.strip():
             try:
+                # Log what type of mask input we're processing
+                if input.mask.startswith(('http://', 'https://')):
+                    logger.info(f"Mask: URL - {input.mask}")
+                else:
+                    preview = input.mask[:50] + "..." if len(input.mask) > 50 else input.mask
+                    logger.info(f"Mask: Base64 - {preview}")
+                
                 mask_file = await _process_image_input(input.mask, "mask.png")
                 logger.info(f"Processed mask: {len(mask_file.getvalue())} bytes")
             except Exception as e:
