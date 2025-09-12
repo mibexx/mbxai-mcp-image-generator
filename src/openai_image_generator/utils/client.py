@@ -658,7 +658,8 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
             "model": model,
             "prompt": prompt,
             "image": image_files,
-            "size": size
+            "size": size,
+            "response_format": "url"
         }
         
         # Add mask if provided
@@ -668,6 +669,7 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
         logger.info("=== API Request Parameters ===")
         logger.info(f"Model: {params['model']}")
         logger.info(f"Size: {params['size']}")
+        logger.info(f"Response Format: {params['response_format']}")
         logger.info(f"Prompt length: {len(prompt)} characters")
         logger.info(f"Images count: {len(image_files)}")
         logger.info(f"Mask provided: {'Yes' if mask_file else 'No'}")
@@ -716,10 +718,28 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
             raise
         
         # Get the edited image URL
+        logger.info(f"API response data count: {len(result.data) if result.data else 0}")
+        
         if not result.data or len(result.data) == 0:
             raise ValueError("No image data returned from API")
         
-        edited_image_url = result.data[0].url
+        # Log the full response structure for debugging
+        first_result = result.data[0]
+        logger.info(f"First result attributes: {dir(first_result)}")
+        logger.info(f"First result URL: {getattr(first_result, 'url', 'NO_URL_ATTRIBUTE')}")
+        logger.info(f"First result B64_JSON: {getattr(first_result, 'b64_json', 'NO_B64_JSON_ATTRIBUTE')}")
+        
+        edited_image_url = getattr(first_result, 'url', None)
+        if not edited_image_url:
+            # Try to get base64 instead
+            b64_data = getattr(first_result, 'b64_json', None)
+            if b64_data:
+                logger.info("Image returned as base64, converting to file...")
+                # TODO: Handle base64 response
+                raise ValueError("Image returned as base64 but URL expected - need to implement base64 handling")
+            else:
+                raise ValueError("No URL or base64 data returned from API")
+        
         logger.info(f"Successfully edited image URL: {edited_image_url}")
         
         # Download and save the image
