@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import uuid
+import base64
 from pathlib import Path
 from pydantic import BaseModel
 
@@ -314,6 +315,42 @@ async def _download_and_save_image(image_url: str) -> str:
         raise
 
 
+async def _save_base64_image(base64_data: str) -> str:
+    """Save a base64 encoded image to local storage.
+    
+    Args:
+        base64_data: The base64 encoded image data
+        
+    Returns:
+        The filename of the saved image
+        
+    Raises:
+        Exception: If image decode or save fails
+    """
+    try:
+        # Ensure upload directory exists
+        upload_path = _ensure_upload_directory()
+        
+        # Generate unique filename
+        image_id = str(uuid.uuid4())
+        filename = f"{image_id}.png"
+        file_path = upload_path / filename
+        
+        # Decode base64 data
+        image_data = base64.b64decode(base64_data)
+        
+        # Save the image
+        with open(file_path, 'wb') as f:
+            f.write(image_data)
+        
+        logging.info(f"Successfully decoded and saved base64 image: {filename} ({len(image_data)} bytes)")
+        return filename
+        
+    except Exception as e:
+        logging.error(f"Error saving base64 image: {str(e)}")
+        raise
+
+
 def _generate_proxy_url(filename: str) -> str:
     """Generate a proxy URL for accessing a stored image.
     
@@ -536,17 +573,26 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             
             raise
         
-        # Get the original image URL
+        # Get the original image URL or base64 data
         if not result.data or len(result.data) == 0:
             raise ValueError("No image data returned from API")
         
-        original_image_url = result.data[0].url
-        logger.info(f"Successfully generated image URL: {original_image_url}")
+        first_result = result.data[0]
+        original_image_url = getattr(first_result, 'url', None)
+        b64_data = getattr(first_result, 'b64_json', None)
         
-        # Download and save the image
-        logger.info("Downloading and saving image...")
-        filename = await _download_and_save_image(original_image_url)
-        logger.info(f"Image saved as: {filename}")
+        if original_image_url:
+            logger.info(f"Successfully generated image URL: {original_image_url}")
+            # Download and save the image
+            logger.info("Downloading and saving image...")
+            filename = await _download_and_save_image(original_image_url)
+            logger.info(f"Image saved as: {filename}")
+        elif b64_data:
+            logger.info("Image returned as base64, saving directly...")
+            filename = await _save_base64_image(b64_data)
+            logger.info(f"Base64 image saved as: {filename}")
+        else:
+            raise ValueError("No URL or base64 data returned from API")
         
         # Generate and return proxy URL
         proxy_url = _generate_proxy_url(filename)
@@ -742,8 +788,14 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
             # Try to get base64 instead
             if b64_value:
                 logger.info("Image returned as base64, converting to file...")
-                # TODO: Handle base64 response
-                raise ValueError("Image returned as base64 but URL expected - need to implement base64 handling")
+                filename = await _save_base64_image(b64_value)
+                logger.info(f"Base64 image saved as: {filename}")
+                
+                # Generate and return proxy URL
+                proxy_url = _generate_proxy_url(filename)
+                logger.info(f"Base64 image stored locally and accessible via: {proxy_url}")
+                logger.info("=== Image Editing Completed Successfully (Base64) ===")
+                return proxy_url
             else:
                 logger.error("No valid image data found in API response")
                 logger.error(f"Full result object: {first_result}")
