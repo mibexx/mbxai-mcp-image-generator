@@ -56,7 +56,7 @@ async def _process_image_input(image_input: str, name: str) -> io.BytesIO:
 
 class ImageGenerationInput(BaseModel):
     prompt: str = Field(..., description="The text description of the image to generate")
-    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1792', and '1792x1024')")
+    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1536', '1536x1024')")
     quality: str = Field(..., description="The quality of the image ('standard', 'hd')")
     model: str = Field(..., description="The model to use ('gpt-image-1' is default)")
     images: list[str] = Field(..., description="List of reference images as URLs or base64 encoded strings (empty list for no references)")
@@ -66,7 +66,7 @@ class ImageEditInput(BaseModel):
     prompt: str = Field(..., description="The text description of the edit to apply")
     images: list[str] = Field(..., description="List of images as URLs or base64 encoded strings - first is main image, rest are references")
     mask: str = Field(..., description="Mask image as URL or base64 encoded string for selective editing (use empty string for no mask)")
-    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1536', and '1536x1024')")
+    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1536', '1536x1024')")
     model: str = Field(..., description="The model to use for editing ('gpt-image-1' or 'dall-e-3')")
 
 @mcp.tool()
@@ -76,7 +76,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
     Supports both standard image generation (dall-e-3) and reference image generation (gpt-image-1).
     When using reference images, set model to 'gpt-image-1' and provide base64 encoded images.
     
-    Allowed sizes: 1024x1024, 1024x1792, and 1792x1024
+    Allowed sizes: 1024x1024, 1024x1536, 1536x1024
     
     Args:
         input: ImageGenerationInput model containing prompt and generation parameters

@@ -336,13 +336,13 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
+def generate_image(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "standard") -> str:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
         prompt: The text description of the image to generate
         model: The model to use for generation (default: from config, currently "dall-e-3")
-        size: The size of the image ('1024x1024', '1024x1792', '1792x1024', 'auto') (default: "auto")
+        size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
     Returns:
@@ -409,13 +409,13 @@ def _validate_prompt(prompt: str) -> tuple[bool, str]:
     return True, ""
 
 
-async def generate_image_async(prompt: str, model: str | None = None, size: str = "auto", quality: str = "auto") -> str:
+async def generate_image_async(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "standard") -> str:
     """Async version of generate_image for use in async contexts.
     
     Args:
         prompt: The text description of the image to generate
         model: The model to use for generation (default: from config, currently "dall-e-3")
-        size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
+        size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
         quality: The quality of the image ('standard', 'hd') (default: "standard")
         
     Returns:
@@ -443,10 +443,10 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             raise ValueError(f"Prompt validation failed: {error_msg}")
         
         # Validate size parameter
-        valid_sizes = ['1024x1024', '1024x1792', '1792x1024', 'auto']
+        valid_sizes = ['1024x1024', '1024x1536', '1536x1024']
         if size not in valid_sizes:
-            logger.warning(f"Invalid size '{size}', using 'auto'. Valid sizes: {valid_sizes}")
-            size = 'auto'
+            logger.warning(f"Invalid size '{size}', using '1024x1024'. Valid sizes: {valid_sizes}")
+            size = '1024x1024'
         
         # Validate quality parameter
         valid_qualities = ['standard', 'hd']
@@ -565,7 +565,7 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         raise
 
 
-def edit_image(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "auto") -> str:
+def edit_image(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "1024x1024") -> str:
     """Edit an image based on a text prompt using OpenAI's image editing API.
     
     Args:
@@ -573,7 +573,7 @@ def edit_image(prompt: str, image_files: list, mask_file=None, model: str | None
         image_files: List of file objects - first is main image, rest are references
         mask_file: Optional mask file object for selective editing
         model: The model to use for editing (default: from config, currently "gpt-image-1")
-        size: The size of the image ('1024x1024', '1024x1792', '1792x1024', 'auto') (default: "auto")
+        size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
         
     Returns:
         The proxy URL of the downloaded and stored edited image
@@ -585,7 +585,7 @@ def edit_image(prompt: str, image_files: list, mask_file=None, model: str | None
     return asyncio.run(edit_image_async(prompt, image_files, mask_file, model, size))
 
 
-async def edit_image_async(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "auto") -> str:
+async def edit_image_async(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "1024x1024") -> str:
     """Async version of edit_image for use in async contexts.
     
     Args:
@@ -593,7 +593,7 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
         image_files: List of file objects - first is main image, rest are references
         mask_file: Optional mask file object for selective editing
         model: The model to use for editing (default: from config, currently "gpt-image-1")
-        size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
+        size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
         
     Returns:
         The proxy URL of the downloaded and stored edited image
@@ -625,10 +625,10 @@ async def edit_image_async(prompt: str, image_files: list, mask_file=None, model
             raise ValueError("At least one image file is required")
         
         # Validate size parameter
-        valid_sizes = ['1024x1024', '1024x1792', '1792x1024', 'auto']
+        valid_sizes = ['1024x1024', '1024x1536', '1536x1024']
         if size not in valid_sizes:
-            logger.warning(f"Invalid size '{size}', using 'auto'. Valid sizes: {valid_sizes}")
-            size = 'auto'
+            logger.warning(f"Invalid size '{size}', using '1024x1024'. Valid sizes: {valid_sizes}")
+            size = '1024x1024'
         
         logger.info("Input validation completed successfully")
         
