@@ -57,17 +57,17 @@ async def _process_image_input(image_input: str, name: str) -> io.BytesIO:
 class ImageGenerationInput(BaseModel):
     prompt: str = Field(..., description="The text description of the image to generate")
     size: str = Field(..., description="The size of the image ('1024x1024', '1024x1792', and '1792x1024')")
-    quality: str = Field(..., description="The quality of the image ('standard', 'hd') (default: 'standard')")
-    model: str | None = Field(None, description="The model to use ('dall-e-3' for standard generation, 'gpt-image-1' for reference image support)")
-    images: list[str] | None = Field(None, description="Optional list of reference images as URLs or base64 encoded strings (requires gpt-image-1 model)")
+    quality: str = Field(..., description="The quality of the image ('standard', 'hd')")
+    model: str = Field(..., description="The model to use ('gpt-image-1' is default)")
+    images: list[str] = Field(..., description="List of reference images as URLs or base64 encoded strings (empty list for no references)")
 
 
 class ImageEditInput(BaseModel):
     prompt: str = Field(..., description="The text description of the edit to apply")
     images: list[str] = Field(..., description="List of images as URLs or base64 encoded strings - first is main image, rest are references")
-    mask: str | None = Field(None, description="Optional mask image as URL or base64 encoded string for selective editing")
-    size: str | None = Field(None, description="The size of the image ('1024x1024', '1024x1536', and '1536x1024')")
-    model: str | None = Field(None, description="The model to use for editing (default: 'gpt-image-1', alternative: 'dall-e-3')")
+    mask: str = Field(..., description="Mask image as URL or base64 encoded string for selective editing (use empty string for no mask)")
+    size: str = Field(..., description="The size of the image ('1024x1024', '1024x1536', and '1536x1024')")
+    model: str = Field(..., description="The model to use for editing ('gpt-image-1' or 'dall-e-3')")
 
 @mcp.tool()
 async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
@@ -89,14 +89,17 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
     try:
         logger.info(f"Generating image with prompt: {input.prompt[:100]}...")
         
-        # Determine the model to use
+        # Set defaults for required fields if empty
         from ..config import get_openai_config
         openai_config = get_openai_config()
         
-        model_to_use = input.model if input.model else openai_config.image_model
+        # Use defaults if empty strings or None provided
+        model_to_use = input.model if input.model and input.model.strip() else openai_config.image_model
+        size = input.size if input.size and input.size.strip() else "1024x1024"
+        quality = input.quality if input.quality and input.quality.strip() else "standard"
         
         # Check if using reference images with gpt-image-1
-        if input.images and len(input.images) > 0:
+        if input.images and len(input.images) > 0 and any(img.strip() for img in input.images):
             if model_to_use != "gpt-image-1":
                 logger.warning("Reference images provided but model is not gpt-image-1. Switching to gpt-image-1.")
                 model_to_use = "gpt-image-1"
@@ -104,12 +107,13 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             # Process images (URLs or base64) to file-like objects for reference image generation
             image_files = []
             for i, img_input in enumerate(input.images):
-                try:
-                    img_file = await _process_image_input(img_input, f"reference_{i}.png")
-                    image_files.append(img_file)
-                    logger.info(f"Processed reference image {i}: {len(img_file.getvalue())} bytes")
-                except Exception as e:
-                    raise ValueError(f"Failed to process reference image {i}: {str(e)}")
+                if img_input and img_input.strip():  # Skip empty strings
+                    try:
+                        img_file = await _process_image_input(img_input, f"reference_{i}.png")
+                        image_files.append(img_file)
+                        logger.info(f"Processed reference image {i}: {len(img_file.getvalue())} bytes")
+                    except Exception as e:
+                        raise ValueError(f"Failed to process reference image {i}: {str(e)}")
             
             # Use edit_image_async for reference image generation (no mask needed)
             image_url = await edit_image_async(
@@ -117,7 +121,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
                 image_files=image_files,
                 mask_file=None,
                 model=model_to_use,
-                size=input.size
+                size=size
             )
             
         else:
@@ -125,16 +129,16 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             image_url = await generate_image_async(
                 prompt=input.prompt,
                 model=model_to_use,
-                size=input.size,
-                quality=input.quality
+                size=size,
+                quality=quality
             )
         
         return {
             "success": True,
             "prompt": input.prompt,
-            "model": openai_config.image_model,
-            "size": input.size,
-            "quality": input.quality,
+            "model": model_to_use,
+            "size": size,
+            "quality": quality,
             "image_url": image_url,
             "message": "Image generated successfully"
         }
@@ -145,8 +149,10 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         logger.error(f"Error message: {str(e)}")
         logger.error(f"Input parameters:")
         logger.error(f"  - Prompt: {input.prompt}")
-        logger.error(f"  - Size: {input.size}")
-        logger.error(f"  - Quality: {input.quality}")
+        logger.error(f"  - Model: {model_to_use if 'model_to_use' in locals() else input.model}")
+        logger.error(f"  - Size: {size if 'size' in locals() else input.size}")
+        logger.error(f"  - Quality: {quality if 'quality' in locals() else input.quality}")
+        logger.error(f"  - Images count: {len(input.images) if input.images else 0}")
         
         # Determine error type for better user feedback
         error_message = "Failed to generate image"
@@ -191,9 +197,9 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
             "success": False,
             "error": error_details,
             "prompt": input.prompt,
-            "model": openai_config.image_model,
-            "size": input.size,
-            "quality": input.quality,
+            "model": model_to_use if 'model_to_use' in locals() else input.model,
+            "size": size if 'size' in locals() else input.size,
+            "quality": quality if 'quality' in locals() else input.quality,
             "message": error_message
         }
 
@@ -216,9 +222,9 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
     try:
         logger.info(f"Editing image with prompt: {input.prompt[:100]}...")
         
-        # Set default values if not provided
-        size = input.size if input.size else "1024x1024"
-        model = input.model if input.model else "gpt-image-1"
+        # Set default values if empty strings provided
+        size = input.size if input.size and input.size.strip() else "1024x1024"
+        model = input.model if input.model and input.model.strip() else "gpt-image-1"
         
         logger.info(f"Using size: {size}, model: {model}")
         
@@ -234,7 +240,7 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
         
         # Process mask if provided
         mask_file = None
-        if input.mask:
+        if input.mask and input.mask.strip():
             try:
                 mask_file = await _process_image_input(input.mask, "mask.png")
                 logger.info(f"Processed mask: {len(mask_file.getvalue())} bytes")
@@ -256,7 +262,7 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
             "model": model,
             "size": size,
             "images_count": len(input.images),
-            "mask_provided": input.mask is not None,
+            "mask_provided": input.mask is not None and input.mask.strip(),
             "image_url": image_url,
             "message": "Image edited successfully"
         }
@@ -270,7 +276,7 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
         logger.error(f"  - Model: {model if 'model' in locals() else input.model}")
         logger.error(f"  - Size: {size if 'size' in locals() else input.size}")
         logger.error(f"  - Images count: {len(input.images)}")
-        logger.error(f"  - Mask provided: {input.mask is not None}")
+        logger.error(f"  - Mask provided: {input.mask is not None and input.mask.strip()}")
         
         # Determine error type for better user feedback
         error_message = "Failed to edit image"
@@ -318,6 +324,6 @@ async def edit_image(input: ImageEditInput) -> dict[str, Any]:
             "model": model if 'model' in locals() else input.model,
             "size": size if 'size' in locals() else input.size,
             "images_count": len(input.images),
-            "mask_provided": input.mask is not None,
+            "mask_provided": input.mask is not None and input.mask.strip(),
             "message": error_message
         }
