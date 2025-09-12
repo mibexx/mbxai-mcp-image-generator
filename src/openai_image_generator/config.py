@@ -53,7 +53,7 @@ class OpenAIConfig(BaseSettings):
 
     api_key: str = Field(alias="OPENAI_API_KEY")
     base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
-    image_model: str = Field(default="dall-e-3", alias="OPENAI_IMAGE_MODEL")
+    image_model: str = Field(default="gpt-image-1", alias="OPENAI_IMAGE_MODEL")
 
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -86,7 +86,7 @@ class OpenAIConfig(BaseSettings):
             logger.error(f"Invalid base URL format: {self.base_url}")
         
         # Validate image model
-        valid_models = ['dall-e-2', 'dall-e-3']
+        valid_models = ['dall-e-2', 'dall-e-3', 'gpt-image-1']
         if self.image_model not in valid_models:
             logger.warning(f"Image model '{self.image_model}' is not in the standard list: {valid_models}")
         

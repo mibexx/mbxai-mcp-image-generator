@@ -9,7 +9,7 @@ import mimetypes
 config = get_config()
 
 # Import the tools
-from ..project.image_generator import generate_image
+from ..project.image_generator import generate_image, edit_image
 
 # Initialize mbxai server
 server = MCPServer(
@@ -64,3 +64,4 @@ async def serve_image(filename: str):
 async def register_tools():
     """Register all tools with the server."""
     await server.add_tool(generate_image)
+    await server.add_tool(edit_image)

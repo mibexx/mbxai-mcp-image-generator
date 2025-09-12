@@ -563,3 +563,182 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
         
         # Re-raise the exception for the caller to handle
         raise
+
+
+def edit_image(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "auto") -> str:
+    """Edit an image based on a text prompt using OpenAI's image editing API.
+    
+    Args:
+        prompt: The text description of the edit to apply
+        image_files: List of file objects - first is main image, rest are references
+        mask_file: Optional mask file object for selective editing
+        model: The model to use for editing (default: from config, currently "gpt-image-1")
+        size: The size of the image ('1024x1024', '1024x1792', '1792x1024', 'auto') (default: "auto")
+        
+    Returns:
+        The proxy URL of the downloaded and stored edited image
+        
+    Raises:
+        Exception: If image editing, download, or storage fails
+    """
+    # Use the async version with asyncio.run for synchronous interface
+    return asyncio.run(edit_image_async(prompt, image_files, mask_file, model, size))
+
+
+async def edit_image_async(prompt: str, image_files: list, mask_file=None, model: str | None = None, size: str = "auto") -> str:
+    """Async version of edit_image for use in async contexts.
+    
+    Args:
+        prompt: The text description of the edit to apply
+        image_files: List of file objects - first is main image, rest are references
+        mask_file: Optional mask file object for selective editing
+        model: The model to use for editing (default: from config, currently "gpt-image-1")
+        size: The size of the image ('1024x1024', '1536x1024', '1024x1536', 'auto') (default: "auto")
+        
+    Returns:
+        The proxy URL of the downloaded and stored edited image
+        
+    Raises:
+        Exception: If image editing, download, or storage fails
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Log input parameters for debugging
+        logger.info("=== Image Editing Request ===")
+        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Model: {model}")
+        logger.info(f"Size: {size}")
+        logger.info(f"Number of input images: {len(image_files) if image_files else 0}")
+        logger.info(f"Mask provided: {'Yes' if mask_file else 'No'}")
+        
+        # Validate input parameters
+        logger.info("Validating input parameters...")
+        
+        # Validate prompt using comprehensive validation
+        is_valid, error_msg = _validate_prompt(prompt)
+        if not is_valid:
+            raise ValueError(f"Prompt validation failed: {error_msg}")
+        
+        # Validate image files
+        if not image_files or len(image_files) == 0:
+            raise ValueError("At least one image file is required")
+        
+        # Validate size parameter
+        valid_sizes = ['1024x1024', '1024x1792', '1792x1024', 'auto']
+        if size not in valid_sizes:
+            logger.warning(f"Invalid size '{size}', using 'auto'. Valid sizes: {valid_sizes}")
+            size = 'auto'
+        
+        logger.info("Input validation completed successfully")
+        
+        # Get OpenAI configuration
+        logger.info("Retrieving OpenAI configuration...")
+        openai_config = get_openai_config()
+        logger.info(f"OpenAI base URL: {openai_config.base_url}")
+        logger.info(f"API key present: {'Yes' if openai_config.api_key else 'No'}")
+        
+        # Use gpt-image-1 model for editing if none provided
+        if model is None:
+            model = "gpt-image-1"  # Default to gpt-image-1 for editing
+            logger.info(f"Using default editing model: {model}")
+        else:
+            logger.info(f"Using provided model: {model}")
+        
+        # Initialize async OpenAI client
+        logger.info("Initializing OpenAI client...")
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(
+            api_key=openai_config.api_key,
+            base_url=openai_config.base_url
+        )
+        
+        # Prepare parameters for API call
+        params = {
+            "model": model,
+            "prompt": prompt,
+            "image": image_files,
+            "size": size
+        }
+        
+        # Add mask if provided
+        if mask_file:
+            params["mask"] = mask_file
+        
+        logger.info("=== API Request Parameters ===")
+        logger.info(f"Model: {params['model']}")
+        logger.info(f"Size: {params['size']}")
+        logger.info(f"Prompt length: {len(prompt)} characters")
+        logger.info(f"Images count: {len(image_files)}")
+        logger.info(f"Mask provided: {'Yes' if mask_file else 'No'}")
+        
+        # Log prompt content (truncated for privacy)
+        if len(prompt) > 200:
+            logger.info(f"Prompt preview: {prompt[:200]}...")
+        else:
+            logger.info(f"Full prompt: {prompt}")
+        
+        # Edit the image
+        logger.info("Making API request to OpenAI for image editing...")
+        try:
+            result = await client.images.edit(**params)
+            logger.info("API request completed successfully")
+            
+        except Exception as api_error:
+            logger.error("=== API Request Failed ===")
+            logger.error(f"Error type: {type(api_error).__name__}")
+            logger.error(f"Error message: {str(api_error)}")
+            
+            # Log additional error details if available
+            if hasattr(api_error, 'response'):
+                logger.error(f"Response status: {api_error.response.status_code}")
+                logger.error(f"Response headers: {dict(api_error.response.headers)}")
+                
+                try:
+                    error_data = api_error.response.json()
+                    logger.error(f"Error response body: {error_data}")
+                    
+                    # Log specific error details
+                    if 'error' in error_data:
+                        error_info = error_data['error']
+                        logger.error(f"OpenAI error type: {error_info.get('type', 'unknown')}")
+                        logger.error(f"OpenAI error code: {error_info.get('code', 'unknown')}")
+                        logger.error(f"OpenAI error message: {error_info.get('message', 'unknown')}")
+                        
+                        # Log parameter validation errors
+                        if 'param' in error_info:
+                            logger.error(f"Parameter error: {error_info['param']}")
+                        
+                except Exception as json_error:
+                    logger.error(f"Could not parse error response as JSON: {str(json_error)}")
+                    logger.error(f"Raw error response: {api_error.response.text[:1000]}")
+            
+            raise
+        
+        # Get the edited image URL
+        if not result.data or len(result.data) == 0:
+            raise ValueError("No image data returned from API")
+        
+        edited_image_url = result.data[0].url
+        logger.info(f"Successfully edited image URL: {edited_image_url}")
+        
+        # Download and save the image
+        logger.info("Downloading and saving edited image...")
+        filename = await _download_and_save_image(edited_image_url)
+        logger.info(f"Edited image saved as: {filename}")
+        
+        # Generate and return proxy URL
+        proxy_url = _generate_proxy_url(filename)
+        logger.info(f"Edited image stored locally and accessible via: {proxy_url}")
+        logger.info("=== Image Editing Completed Successfully ===")
+        
+        return proxy_url
+        
+    except Exception as e:
+        logger.error("=== Image Editing Failed ===")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Input parameters - Prompt: {prompt[:100]}..., Model: {model}, Size: {size}")
+        
+        # Re-raise the exception for the caller to handle
+        raise
