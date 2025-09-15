@@ -519,15 +519,13 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             "model": model,
             "prompt": prompt,
             "size": size,
-            "quality": quality,
-            "response_format": "url"
+            "quality": quality
         }
         
         logger.info("=== API Request Parameters ===")
         logger.info(f"Model: {params['model']}")
         logger.info(f"Size: {params['size']}")
         logger.info(f"Quality: {params['quality']}")
-        logger.info(f"Response Format: {params['response_format']}")
         logger.info(f"Prompt length: {len(prompt)} characters")
         
         # Log prompt content (truncated for privacy)
