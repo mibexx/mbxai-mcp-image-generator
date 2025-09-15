@@ -68,7 +68,7 @@ async def _process_image_input(image_input: str, name: str) -> io.BytesIO:
 class ImageGenerationInput(BaseModel):
     prompt: str = Field(..., description="The text description of the image to generate")
     size: str = Field(..., description="The size of the image ('1024x1024', '1024x1536', '1536x1024')")
-    quality: str = Field(..., description="The quality of the image ('standard', 'hd')")
+    quality: str = Field(..., description="The quality of the image ('low', 'medium', 'high', 'auto')")
     model: str = Field(..., description="The model to use ('gpt-image-1' is default)")
     images: list[str] = Field(..., description="List of reference images as URLs or base64 encoded strings (empty list for no references)")
 
@@ -107,7 +107,7 @@ async def generate_image(input: ImageGenerationInput) -> dict[str, Any]:
         # Use defaults if empty strings or None provided
         model_to_use = input.model if input.model and input.model.strip() else openai_config.image_model
         size = input.size if input.size and input.size.strip() else "1024x1024"
-        quality = input.quality if input.quality and input.quality.strip() else "standard"
+        quality = input.quality if input.quality and input.quality.strip() else "auto"
         
         # Check if using reference images with gpt-image-1
         if input.images and len(input.images) > 0 and any(img.strip() for img in input.images):

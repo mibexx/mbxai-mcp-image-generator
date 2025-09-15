@@ -373,14 +373,14 @@ def get_tool_client(model: OpenRouterModel = OpenRouterModel.GPT41) -> ToolClien
     return ToolClient(get_openrouter_client(model))
 
 
-def generate_image(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "standard") -> str:
+def generate_image(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "auto") -> str:
     """Generate an image based on a text prompt using OpenAI's image generation API.
     
     Args:
         prompt: The text description of the image to generate
         model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
-        quality: The quality of the image ('standard', 'hd') (default: "standard")
+        quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         
     Returns:
         The proxy URL of the downloaded and stored image
@@ -446,14 +446,14 @@ def _validate_prompt(prompt: str) -> tuple[bool, str]:
     return True, ""
 
 
-async def generate_image_async(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "standard") -> str:
+async def generate_image_async(prompt: str, model: str | None = None, size: str = "1024x1024", quality: str = "auto") -> str:
     """Async version of generate_image for use in async contexts.
     
     Args:
         prompt: The text description of the image to generate
         model: The model to use for generation (default: from config, currently "dall-e-3")
         size: The size of the image ('1024x1024', '1024x1536', '1536x1024') (default: "1024x1024")
-        quality: The quality of the image ('standard', 'hd') (default: "standard")
+        quality: The quality of the image ('low', 'medium', 'high', 'auto') (default: "auto")
         
     Returns:
         The proxy URL of the downloaded and stored image
@@ -486,10 +486,10 @@ async def generate_image_async(prompt: str, model: str | None = None, size: str 
             size = '1024x1024'
         
         # Validate quality parameter
-        valid_qualities = ['standard', 'hd']
+        valid_qualities = ['low', 'medium', 'high', 'auto']
         if quality not in valid_qualities:
-            logger.warning(f"Invalid quality '{quality}', using 'standard'. Valid qualities: {valid_qualities}")
-            quality = 'standard'
+            logger.warning(f"Invalid quality '{quality}', using 'auto'. Valid qualities: {valid_qualities}")
+            quality = 'auto'
         
         logger.info("Input validation completed successfully")
         
